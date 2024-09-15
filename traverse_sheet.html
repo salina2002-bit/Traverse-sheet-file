@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Survey Station Data</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .container {
+            margin-bottom: 20px;
+        }
+        input, button {
+            padding: 8px;
+            margin-right: 10px;
+        }
+        .delete-btn {
+            background-color: red;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+        .delete-btn:hover {
+            background-color: darkred;
+        }
+        .calc-btn {
+            background-color: green;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            cursor: pointer;
+        }
+        .calc-btn:hover {
+            background-color: darkgreen;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <label for="stations">Number of Stations (n): </label>
+    <input type="number" id="stations" min="1" value="1">
+</div>
+
+<!-- Button for adding rows and calculating interior/exterior angles -->
+<div class="container">
+    <button onclick="addData()">Add Data</button>
+</div>
+
+<!-- Buttons for selecting Interior or Exterior Angle -->
+<div class="container">
+    <button class="calc-btn" onclick="calculateAngle('interior')">Calculate Interior Angle</button>
+    <button class="calc-btn" onclick="calculateAngle('exterior')">Calculate Exterior Angle</button>
+</div>
+
+<!-- Button for updating bearings -->
+<div class="container">
+    <button class="calc-btn" onclick="updateBearings()">Update Bearings</button>
+</div>
+
+<!-- Button for calculating Departure (ΔE) and Latitude (ΔN) -->
+<div class="container">
+    <button class="calc-btn" onclick="calculateDepartures()">Calculate ΔE and ΔN</button>
+    <button class="calc-btn" onclick="distributeErrors()">Distribute Errors</button>
+    <button class="calc-btn" onclick="calculateEastingNorthing()">Calculate Easting & Northing</button>
+    <button class="calc-btn" onclick="calculateDeltaH()">Calculate ΔH</button>
+    <button class="calc-btn" onclick="calculateHeights()">Calculate Height</button>
+    <button class="calc-btn" onclick="calculateAccuracy()">Calculate Accuracy</button>
+</div>
+
+<!-- Placeholder to display calculated result -->
+<div class="container">
+    <p><strong>Sum of Observed Angles: </strong><span id="angleSum">0</span></p>
+    <p><strong>True Value: </strong><span id="trueValue">0</span></p>
+    <p><strong>Error: </strong><span id="angleError">0</span></p>
+    <p><strong>ΔH Error: </strong><span id="deltaHError">0</span></p>
+    <p><strong>ΔH Error: </strong><span id="deltaHError">0</span></p>
+    <p><strong>Closing Error: </strong><span id="closingError">0</span></p>
+    <p><strong>Accuracy: </strong><span id="accuracy">0</span></p>
+
+</div>
+
+<table id="stationTable">
+    <thead>
+        <tr>
+            <th>S.N</th>
+            <th>Station</th>
+            <th>Observe Angle</th>
+            <th>Corrected Angle</th>
+            <th>Bearing</th>
+            <th>Distance</th>
+            <th>Departure (ΔE)</th>
+            <th>Correction ΔE</th>
+            <th>Corrected ΔE</th>
+            <th>Easting</th>
+            <th>Latitude (ΔN)</th>
+            <th>Correction ΔN</th>
+            <th>Corrected ΔN</th>
+            <th>Northing</th>
+            <th>Zenithal Angle (Z)</th>
+            <th>Hi</th>
+            <th>Ht</th>
+            <th>ΔH</th>
+            <th>Correction ΔH</th>
+            <th>Corrected ΔH</th>
+            <th>Height</th>
+            <th>Action</th> <!-- Column for delete button -->
+        </tr>
+    </thead>
+    <tbody>
+        <!-- Rows will be added here dynamically -->
+    </tbody>
+</table>
+
+<script>
+    let currentSN = 1;
+
+    function addData() {
+        const tableBody = document.getElementById("stationTable").getElementsByTagName("tbody")[0];
+
+        // Create a new row
+        const newRow = tableBody.insertRow();
+
+        // Add cells to the row
+        let cellSN = newRow.insertCell(0);
+        cellSN.innerHTML = currentSN++;
+
+        // Create input fields for observed angle and other fields
+        for (let j = 1; j < 21; j++) {
+            let newCell = newRow.insertCell(j);
+            newCell.innerHTML = `<input type="text">`;  // Empty input field for user input
+        }
+
+        // Add Delete button
+        let deleteCell = newRow.insertCell(21);
+        deleteCell.innerHTML = `<button class="delete-btn" onclick="deleteRow(this)">Delete</button>`;
+    }
+
+    // Function to delete a row
+    function deleteRow(btn) {
+        const row = btn.parentNode.parentNode;
+        row.parentNode.removeChild(row);
+        updateSN();
+        updateBearings(); // Recalculate bearings when rows are deleted
+    }
+
+    // Function to update S.N after a row is deleted
+    function updateSN() {
+        const tableBody = document.getElementById("stationTable").getElementsByTagName("tbody")[0];
+        const rows = tableBody.getElementsByTagName("tr");
+
+        // Reset S.N values
+        currentSN = 1;
+        for (let i = 0; i < rows.length; i++) {
+            rows[i].cells[0].innerHTML = currentSN++;
+        }
+    }
+
+    // Function to update bearings for all rows based on the user-provided formula
+    function updateBearings() {
+        const tableBody = document.getElementById("stationTable").getElementsByTagName("tbody")[0];
+        const rows = tableBody.getElementsByTagName("tr");
+
+        if (rows.length === 0) return; // Exit if no rows are present
+
+        // Initialize arrays to store bearings and corrected angles
+        let correctedAngles = [];
+
+        // Populate corrected angles array with user input values
+        for (let i = 0; i < rows.length; i++) {
+            const correctedAngleInput = parseFloat(rows[i].cells[3].getElementsByTagName('input')[0].value) || 0;
+            correctedAngles.push(correctedAngleInput);
+        }
+
+        // Initialize the first bearing based on user input
+        let previousBearing = parseFloat(rows[0].cells[4].getElementsByTagName('input')[0].value) || 0;
+
+        // Update bearings starting from the first row
+        rows[0].cells[4].getElementsByTagName('input')[0].value = previousBearing.toFixed(4); // Set the initial bearing
+
+        for (let i = 1; i < rows.length; i++) {
+            const previousCorrectedAngle = correctedAngles[i - 1];
+
+            // Calculate the current station's bearing based on the previous one
+            let calculatedBearing = previousBearing + 200 - previousCorrectedAngle;
+
+            // Ensure the bearing is within the range of 0 to 400
+            if (calculatedBearing < 0) {
+                calculatedBearing += 400;
+            } else if (calculatedBearing >= 400) {
+                calculatedBearing -= 400;
+            }
+
+            // Update the bearing input field for the current row
+            rows[i].cells[4].getElementsByTagName('input')[0].value = calculatedBearing.toFixed(4);
+
+            // Update previousBearing for the next iteration
+            previousBearing = calculatedBearing;
+        }
+    }
+
+    // Function to calculate sum of observed angles and apply formula
+function calculateAngle(type) {
+        const n = parseInt(document.getElementById("stations").value); // Get number of stations from user
+        let angleSum = 0;
+
+        // Loop through the table rows to sum the "Observed Angle" column values
+        const tableBody = document.getElementById("stationTable").getElementsByTagName("tbody")[0];
+        const rows = tableBody.getElementsByTagName("tr");
+
+        let countValidAngles = 0; // Count valid observed angles for correction later
+
+        for (let i = 0; i < rows.length; i++) {
+            const observeAngle = rows[i].cells[2].getElementsByTagName('input')[0].value; // Get observed angle value
+
+            if (observeAngle) {  // Only consider rows with non-empty observed angles
+                angleSum += parseFloat(observeAngle) || 0; // Add value to sum, treat empty or invalid as 0
+                countValidAngles++;
+            }
+        }
+
+        // Display the sum of observed angles
+        document.getElementById("angleSum").innerText = angleSum.toFixed(2);
+
+        let trueValue = 0;
+        if (type === 'interior') {
+            trueValue = (2 * n - 4) * 90;  // Formula for interior angle
+        } else if (type === 'exterior') {
+            trueValue = (2 * n + 4) * 90;  // Formula for exterior angle
+        }
+
+        // Display the true value
+        document.getElementById("trueValue").innerText = trueValue.toFixed(2);
+
+        // Calculate the error
+        let error = trueValue - angleSum;
+
+        // Display the error
+        document.getElementById("angleError").innerText = error.toFixed(2);
+
+        // Divide the error by the number of valid observed angles (those with input)
+        let correction = error / countValidAngles;
+
+        // Update the "Corrected Angle" column for rows with valid observed angles
+        for (let i = 0; i < rows.length; i++) {
+            const observeAngle = parseFloat(rows[i].cells[2].getElementsByTagName('input')[0].value) || 0; // Get observed angle value
+            
+            if (observeAngle) {  // Only correct rows with non-empty observed angles
+                let correctedAngle = observeAngle + correction;
+                rows[i].cells[3].getElementsByTagName('input')[0].value = correctedAngle.toFixed(2);
+            }
+        }
+}
+
+    // Function to calculate Departure (ΔE) and Latitude (ΔN)
+    function calculateDepartures() {
+        const tableBody = document.getElementById("stationTable").getElementsByTagName("tbody")[0];
+        const rows = tableBody.getElementsByTagName("tr");
+
+        let totalDistance = 0;
+        let totalDeltaE = 0;
+        let totalDeltaN = 0;
+
+        // Calculate total distance, total Departure (ΔE), and total Latitude (ΔN)
+        for (let i = 0; i < rows.length; i++) {
+            const distance = parseFloat(rows[i].cells[5].getElementsByTagName('input')[0].value) || 0;
+            const bearing = parseFloat(rows[i].cells[4].getElementsByTagName('input')[0].value) || 0;
+
+            // Convert bearing to radians for trigonometric calculations
+            const bearingRad = (bearing * Math.PI) / 200;
+
+            // Calculate ΔE and ΔN
+            const deltaE = distance * Math.sin(bearingRad);
+            const deltaN = distance * Math.cos(bearingRad);
+
+            // Update Departure (ΔE) and Latitude (ΔN) columns
+            rows[i].cells[6].getElementsByTagName('input')[0].value = deltaE.toFixed(4);
+            rows[i].cells[10].getElementsByTagName('input')[0].value = deltaN.toFixed(4);
+
+            // Calculate sums
+            totalDistance += distance;
+            totalDeltaE += deltaE;
+            totalDeltaN += deltaN;
+        }
+
+        // Display errors if any
+        const deltaEError = totalDeltaE.toFixed(4);
+        const deltaNError = totalDeltaN.toFixed(4);
+        
+        document.getElementById("angleError").innerText = `ΔE Error: ${deltaEError}, ΔN Error: ${deltaNError}`;
+    }
+
+    // Function to distribute errors using Bowditch's formula
+    function distributeErrors() {
+        const tableBody = document.getElementById("stationTable").getElementsByTagName("tbody")[0];
+        const rows = tableBody.getElementsByTagName("tr");
+
+        let totalDistance = 0;
+        let totalDeltaE = 0;
+        let totalDeltaN = 0;
+
+        // Calculate total distance, total Departure (ΔE), and total Latitude (ΔN)
+        for (let i = 0; i < rows.length; i++) {
+            const distance = parseFloat(rows[i].cells[5].getElementsByTagName('input')[0].value) || 0;
+            const deltaE = parseFloat(rows[i].cells[6].getElementsByTagName('input')[0].value) || 0;
+            const deltaN = parseFloat(rows[i].cells[10].getElementsByTagName('input')[0].value) || 0;
+
+            totalDistance += distance;
+            totalDeltaE += deltaE;
+            totalDeltaN += deltaN;
+        }
+
+        // Calculate and update Correction ΔE and Correction ΔN
+        for (let i = 0; i < rows.length; i++) {
+            const distance = parseFloat(rows[i].cells[5].getElementsByTagName('input')[0].value) || 0;
+            const deltaE = parseFloat(rows[i].cells[6].getElementsByTagName('input')[0].value) || 0;
+            const deltaN = parseFloat(rows[i].cells[10].getElementsByTagName('input')[0].value) || 0;
+
+            // Calculate corrections
+            const correctionDeltaE = (deltaE / totalDistance) * distance;
+            const correctionDeltaN = (deltaN / totalDistance) * distance;
+
+            // Update Correction ΔE and Correction ΔN columns
+            rows[i].cells[7].getElementsByTagName('input')[0].value = correctionDeltaE.toFixed(4);
+            rows[i].cells[11].getElementsByTagName('input')[0].value = correctionDeltaN.toFixed(4);
+
+            // Update Corrected ΔE and Corrected ΔN columns
+            const correctedDeltaE = deltaE + correctionDeltaE;
+            const correctedDeltaN = deltaN + correctionDeltaN;
+
+            rows[i].cells[8].getElementsByTagName('input')[0].value = correctedDeltaE.toFixed(4);
+            rows[i].cells[12].getElementsByTagName('input')[0].value = correctedDeltaN.toFixed(4);
+        }
+    }
+
+    // Function to calculate Easting and Northing based on corrected ΔE and ΔN
+    function calculateEastingNorthing() {
+        const tableBody = document.getElementById("stationTable").getElementsByTagName("tbody")[0];
+        const rows = tableBody.getElementsByTagName("tr");
+
+        if (rows.length === 0) return; // Exit if no rows are present
+
+        let previousEasting = parseFloat(rows[0].cells[9].getElementsByTagName('input')[0].value) || 0;
+        let previousNorthing = parseFloat(rows[0].cells[13].getElementsByTagName('input')[0].value) || 0;
+
+        // Update easting and northing for each station
+        for (let i = 1; i < rows.length; i++) {
+            const correctedDeltaE = parseFloat(rows[i].cells[8].getElementsByTagName('input')[0].value) || 0;
+            const correctedDeltaN = parseFloat(rows[i].cells[12].getElementsByTagName('input')[0].value) || 0;
+
+            // Calculate the new easting and northing based on the previous values and corrected ΔE and ΔN
+            let currentEasting = previousEasting + correctedDeltaE;
+            let currentNorthing = previousNorthing + correctedDeltaN;
+
+            // Update easting and northing input fields
+            rows[i].cells[9].getElementsByTagName('input')[0].value = currentEasting.toFixed(4);
+            rows[i].cells[13].getElementsByTagName('input')[0].value = currentNorthing.toFixed(4);
+
+            // Update previous easting and northing for the next iteration
+            previousEasting = currentEasting;
+            previousNorthing = currentNorthing;
+        }
+    }
+
+    // Function to calculate ΔH and distribute errors
+    // Function to calculate ΔH and distribute errors
+    function calculateDeltaH() {
+    const tableBody = document.getElementById("stationTable").getElementsByTagName("tbody")[0];
+    const rows = tableBody.getElementsByTagName("tr");
+
+    let sumDeltaH = 0;
+    let validStations = 0;
+
+    // Calculate ΔH for each station
+    for (let i = 0; i < rows.length; i++) {
+        const distance = parseFloat(rows[i].cells[5].getElementsByTagName('input')[0].value) || 0;
+        const zenithalAngle = parseFloat(rows[i].cells[14].getElementsByTagName('input')[0].value) || 0;
+        const Hi = parseFloat(rows[i].cells[15].getElementsByTagName('input')[0].value) || 0;
+        const Ht = parseFloat(rows[i].cells[16].getElementsByTagName('input')[0].value) || 0;
+
+        if (zenithalAngle && Hi && Ht) { // Check if values are available
+            // Convert zenithal angle to radians
+            const zenithalAngleRad = (zenithalAngle * Math.PI) / 200;
+
+            // Calculate ΔH using the provided formula
+            const deltaH = (distance * (1 / Math.tan(zenithalAngleRad))) + Hi - Ht;
+
+            // Update ΔH column
+            rows[i].cells[17].getElementsByTagName('input')[0].value = deltaH.toFixed(4);
+
+            // Calculate sum of ΔH for valid stations
+            sumDeltaH += deltaH;
+            validStations++;
+        } else {
+            // Clear ΔH column if data is missing
+            rows[i].cells[17].getElementsByTagName('input')[0].value = '';
+        }
+    }
+
+    // Calculate and display the error for ΔH
+    let errorDeltaH = sumDeltaH;
+    document.getElementById("deltaHError").innerText = `ΔH Error: ${errorDeltaH.toFixed(4)}`;
+
+    if (Math.abs(errorDeltaH) > 0.0001 && validStations > 0) { // Using a tolerance for floating point precision
+        // Distribute error equally among all valid stations
+        for (let i = 0; i < rows.length; i++) {
+            const zenithalAngle = parseFloat(rows[i].cells[14].getElementsByTagName('input')[0].value) || 0;
+            const Hi = parseFloat(rows[i].cells[15].getElementsByTagName('input')[0].value) || 0;
+            const Ht = parseFloat(rows[i].cells[16].getElementsByTagName('input')[0].value) || 0;
+
+            if (zenithalAngle && Hi && Ht) { // Only apply correction to valid stations
+                const deltaH = parseFloat(rows[i].cells[17].getElementsByTagName('input')[0].value) || 0;
+                const correctionDeltaH = errorDeltaH / validStations;
+                const correctedDeltaH = deltaH - correctionDeltaH;
+
+                // Update Correction ΔH and Corrected ΔH columns
+                rows[i].cells[18].getElementsByTagName('input')[0].value = correctionDeltaH.toFixed(4);
+                rows[i].cells[19].getElementsByTagName('input')[0].value = correctedDeltaH.toFixed(4);
+            } else {
+                // Clear Correction ΔH and Corrected ΔH if data is missing
+                rows[i].cells[18].getElementsByTagName('input')[0].value = '';
+                rows[i].cells[19].getElementsByTagName('input')[0].value = '';
+            }
+        }
+    }
+}
+
+function calculateHeights() {
+    const tableBody = document.getElementById("stationTable").getElementsByTagName("tbody")[0];
+    const rows = tableBody.getElementsByTagName("tr");
+
+    let previousHeight = null; // To store the height of the previous station
+
+    // Iterate over each station (row)
+    for (let i = 0; i < rows.length; i++) {
+        const heightInput = rows[i].cells[20].getElementsByTagName('input')[0]; // Height column
+        const correctedDeltaH = parseFloat(rows[i].cells[19].getElementsByTagName('input')[0].value) || 0; // Corrected ΔH column
+
+        // If the height for the first known station is entered by the user
+        if (i === 0) {
+            previousHeight = parseFloat(heightInput.value); // User inputs height for the first station
+            if (isNaN(previousHeight)) {
+                alert("Please enter a valid height for the known station.");
+                return;
+            }
+        } else {
+            // Calculate the height of subsequent stations
+            const currentHeight = previousHeight + correctedDeltaH;
+            heightInput.value = currentHeight.toFixed(4); // Update height column
+            previousHeight = currentHeight; // Update previous height for next iteration
+        }
+    }
+}
+function calculateAccuracy() {
+            // Getting input values
+            const distance = parseFloat(document.getElementById("distance").value);
+            const zenithalAngle = parseFloat(document.getElementById("zenithalAngle").value);
+            const hi = parseFloat(document.getElementById("hi").value);
+            const ht = parseFloat(document.getElementById("ht").value);
+            const totalErrorDeparture = Math.abs(parseFloat(document.getElementById("totalErrorDeparture").value));
+            const totalErrorLatitude = Math.abs(parseFloat(document.getElementById("totalErrorLatitude").value));
+
+            // Calculate ΔH Error
+            const deltaHError = distance * Math.cot(zenithalAngle * Math.PI / 180) + hi - ht;
+
+            // Calculate Closing Error
+            const closingError = totalErrorDeparture + totalErrorLatitude;
+
+            // Calculate Accuracy
+            const accuracy = sumOfDistances / closingError;
+
+            // Output the results
+            document.getElementById("deltaHError").textContent = deltaHError.toFixed(2);
+            document.getElementById("closingError").textContent = closingError.toFixed(2);
+            document.getElementById("accuracy").textContent = accuracy.toFixed(2);
+        }
+        
+        // Adding cotangent function to JavaScript Math object
+        Math.cot = function(x) {
+            return 1 / Math.tan(x);
+        }
+</script>
+</body>
+</html>
