@@ -1,3 +1,8 @@
+<!--
+ T    R    A    V    E    R    S    E      C    O    M    P    U    T    A    T    I    O    N 
+ Tt   Rr   Aa   Vv   Ee   Rr   Ss   Ee      Cc   Oo   Mm   Pp   Uu   Tt   Aa   Tt   Ii   Oo   Nn 
+-->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -14,16 +19,58 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
+            flex-direction: column;
         }
+
+        /* Creative Traverse Computation */
+        .creative-title {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+            font-size: 32px;
+        }
+
+        .creative-title span {
+            padding: 0 5px;
+            font-weight: bold;
+            animation: colorchange 4s infinite alternate;
+        }
+
+        /* Assigning different fonts and colors to each letter */
+        .t { font-family: 'Courier New', monospace; color: #E63946; }
+        .r { font-family: 'Georgia', serif; color: #42e00d; }
+        .a { font-family: 'Comic Sans MS', cursive; color: #e0195e; }
+        .v { font-family: 'Impact', sans-serif; color: #457B9D; }
+        .e { font-family: 'Times New Roman', Times, serif; color: #1D3557; }
+        .s { font-family: 'Verdana', sans-serif; color: #FF7F50; }
+        .c { font-family: 'Arial Black', sans-serif; color: #6A0572; }
+        .o { font-family: 'Lucida Console', Courier, monospace; color: #ffcc00; }
+        .m { font-family: 'Tahoma', sans-serif; color: #48C9B0; }
+        .p { font-family: 'Palatino Linotype', serif; color: #7B3F00; }
+        .u { font-family: 'Lucida Sans', sans-serif; color: #900C3F; }
+        .n { font-family: 'Helvetica', sans-serif; color: #581845; }
+
+        /* Animation for creative effects */
+        @keyframes colorchange {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
         .login-container {
             background-color: white;
             padding: 30px;
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             width: 300px;
+            text-align: center;
         }
         .login-container h2 {
-            text-align: center;
+            margin-bottom: 20px;
+        }
+        .login-container img {
+            width: 100px;
+            height: auto;
             margin-bottom: 20px;
         }
         input[type="text"], input[type="password"] {
@@ -32,6 +79,7 @@
             margin: 10px 0;
             border: 1px solid #ccc;
             border-radius: 4px;
+            
         }
         button {
             width: 100%;
@@ -63,7 +111,33 @@
 </head>
 <body>
 
+    <!-- Creative title at the top (NORTH) -->
+    <div class="creative-title">
+        <span class="t">T</span>
+        <span class="r">R</span>
+        <span class="a">A</span>
+        <span class="v">V</span>
+        <span class="e">E</span>
+        <span class="r">R</span>
+        <span class="s">S</span>
+        <span class="e">E</span>
+        &nbsp;
+        <span class="c">C</span>
+        <span class="o">O</span>
+        <span class="m">M</span>
+        <span class="p">P</span>
+        <span class="u">U</span>
+        <span class="t">T</span>
+        <span class="a">A</span>
+        <span class="t">T</span>
+        <span class="i">I</span>
+        <span class="o">O</span>
+        <span class="n">N</span>
+    </div>
+
     <div class="login-container" id="login-container">
+        <!-- Add traverse.jpg image here -->
+        <img src="traverse.jpg" alt="Traverse Logo">
         <h2>Login</h2>
         <div class="error" id="error"></div>
         <input type="text" id="username" placeholder="Username" required>
@@ -76,6 +150,8 @@
     </div>
 
     <div class="login-container" id="register-container" style="display:none;">
+        <!-- Add traverse.jpg image here -->
+        <img src="traverse.jpg" alt="Traverse Logo">
         <h2>Create Account</h2>
         <div class="success" id="success"></div>
         <input type="text" id="newUsername" placeholder="Username" required>
@@ -131,7 +207,6 @@
         function login() {
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
-            
             const errorDiv = document.getElementById('error');
 
             // Get stored users from localStorage
